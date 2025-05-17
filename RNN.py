@@ -74,7 +74,7 @@ scaler = MinMaxScaler()
 scaled_data = scaler.fit_transform(data_values)
 
 # Lookback (kaç gün geçmişi kullanacağımız)
-look_back = 10
+look_back = 20
 
 def create_sequences(data, look_back):
     X, y = [], []
@@ -115,8 +115,8 @@ history = model.fit(
 
 
 # Gelecek günler için tahmin 
-# Son 'look_back' günle başlayarak tahmin yap
-future_steps = 10
+# Son 'look_back' günle başlayarak tahmin yapıyoruz
+future_steps = 10  #döngünün kaç kez çalışacağını belirlemek için ekledik.
 last_sequence = scaled_data[-look_back:]
 predictions = []
 
@@ -126,10 +126,10 @@ for _ in range(future_steps):
     predictions.append(next_pred)
     last_sequence = np.append(last_sequence[1:], [[next_pred]], axis=0)
 
-# Orijinal ölçeğe geri dön
+# Tahminleri ölçekten çıkartıp orijinal ölçeğe geri dönüoruz.
 predicted_values = scaler.inverse_transform(np.array(predictions).reshape(-1, 1))
 
-# Tahminleri tarihlerle eşle
+# Tahminleri tarihlerle eşleştiriyoruz.
 last_date = df.index[-1]
 future_dates = pd.date_range(last_date + pd.Timedelta(days=1), periods=future_steps)
 
@@ -139,24 +139,25 @@ print(forecast_df)
 
 
 # Görselleştirme
-#plt.figure(figsize=(10,5))
-#plt.plot(df.index[-50:], df['geri_donus_sayisi'].values[-50:], label='Gerçek Değerler')
-#plt.plot(forecast_df['tarih'], forecast_df['tahmin'], label='RNN Tahminleri', linestyle='--', marker='o')
-#plt.legend()
-#plt.title('RNN ile Geri Dönüş Tahmini')
-#plt.xlabel('Tarih')
-#plt.ylabel('Geri Dönüş Sayısı')
-#plt.xticks(rotation=45)
-#plt.tight_layout()
-#plt.show()
-
-plt.figure(figsize=(8, 4))
-plt.plot(history.history['loss'], label='Eğitim Kaybı')
-plt.plot(history.history['val_loss'], label='Doğrulama Kaybı')
-plt.title('Model Loss (Eğitim vs Doğrulama)')
-plt.xlabel('Epoch')
-plt.ylabel('MSE')
+plt.figure(figsize=(10,5))
+plt.plot(df.index[-50:], df['geri_donus_sayisi'].values[-50:], label='Gerçek Değerler')
+plt.plot(forecast_df['tarih'], forecast_df['tahmin'], label='RNN Tahminleri', linestyle='--', marker='o')
 plt.legend()
-plt.grid(True)
+plt.title('RNN ile Geri Dönüş Tahmini')
+plt.xlabel('Tarih')
+plt.ylabel('Geri Dönüş Sayısı')
+plt.xticks(rotation=45)
 plt.tight_layout()
 plt.show()
+
+#Overfitting için Görselleştirme
+#plt.figure(figsize=(8, 4))
+#plt.plot(history.history['loss'], label='Eğitim Kaybı')
+#plt.plot(history.history['val_loss'], label='Doğrulama Kaybı')
+#plt.title('Model Loss (Eğitim vs Doğrulama)')
+#plt.xlabel('Epoch')
+#plt.ylabel('MSE')
+#plt.legend()
+#plt.grid(True)
+#plt.tight_layout()
+#plt.show()
