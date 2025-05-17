@@ -1,0 +1,131 @@
+import cx_Oracle
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.preprocessing import MinMaxScaler
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import SimpleRNN, Dense
+from sklearn.model_selection import train_test_split
+
+
+# Bağlantı bilgileri
+username = 'ECINAR'  # Veritabanı kullanıcı adınız
+password = '123'  # Veritabanı şifreniz
+dsn = '127.0.0.1:1521/orcl'  # Veritabanı bağlantı adresi (localhost, port ve service name)
+
+try:
+    # Oracle veritabanına bağlantı
+    connection = cx_Oracle.connect(username, password, dsn)
+    print("Bağlantı başarılı ✅")
+
+    # Bağlantıyı kontrol etmek için bir sorgu çalıştıralım
+    cursor = connection.cursor()
+    query = "SELECT * FROM ECINAR.YK_GGD_SAYI "
+    cursor.execute(query)
+
+    # Sütun adlarını al
+    columns = [col[0] for col in cursor.description]
+
+    # Verileri al
+    data = cursor.fetchall()
+
+    # DataFrame'e dönüştür
+    df = pd.DataFrame(data, columns=columns)
+
+    # Sonuçları yazdır
+    #print("Veriler DataFrame olarak alındı:")
+    #print(df)
+    #print(df.head())  # İlk 5 satır
+    print(df.columns)         # Sütun isimlerini göster
+    print(df.iloc[:, :2])  
+
+    # Bağlantıyı kapat
+    cursor.close()
+    connection.close()
+
+except cx_Oracle.DatabaseError as e:
+    print("Veritabanı bağlantı hatası:", e)
+    
+#dataframe oluştur    
+df = pd.DataFrame(data, columns=columns)    
+df['tarih'] = pd.to_datetime(df['TARIH'])
+df.set_index('TARIH', inplace=True)
+df.rename(columns={'SAYI': 'geri_donus_sayisi'}, inplace=True)
+df = df.sort_index()
+#df = df.asfreq('D') eksik verim olmadığından bu alanlar çıkarıldı
+#df.ffill(inplace=True)
+    
+
+# veri hazırlama
+# Sadece hedef kolonu al
+data_values = df['geri_donus_sayisi'].values.reshape(-1, 1)
+
+# Eğitim ve doğrulama verilerini %80-%20 oranında ayır
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+# Veriyi ölçekle (0-1 arası)
+scaler = MinMaxScaler()
+scaled_data = scaler.fit_transform(data_values)
+
+# Lookback (kaç gün geçmişi kullanacağımız)
+look_back = 90
+
+def create_sequences(data, look_back):
+    X, y = [], []
+    for i in range(look_back, len(data)):
+        X.append(data[i - look_back:i, 0])
+        y.append(data[i, 0])
+    return np.array(X), np.array(y)
+
+X, y = create_sequences(scaled_data, look_back)
+
+# RNN için reshape: [samples, timesteps, features]
+X = X.reshape((X.shape[0], X.shape[1], 1))
+
+
+# RNN modeli oluşturma
+model = Sequential()
+model.add(SimpleRNN(50, activation='tanh', input_shape=(look_back, 1)))
+model.add(Dense(1))
+model.compile(optimizer='adam', loss='mse')
+
+# Modeli eğit
+history = model.fit(X, y, epochs=50, batch_size=16, verbose=1)
+
+
+# Gelecek günler için tahmin 
+# Son 'look_back' günle başlayarak tahmin yap
+future_steps = 10
+last_sequence = scaled_data[-look_back:]
+predictions = []
+
+for _ in range(future_steps):
+    input_seq = last_sequence.reshape((1, look_back, 1))
+    next_pred = model.predict(input_seq)[0][0]
+    predictions.append(next_pred)
+    last_sequence = np.append(last_sequence[1:], [[next_pred]], axis=0)
+
+# Orijinal ölçeğe geri dön
+predicted_values = scaler.inverse_transform(np.array(predictions).reshape(-1, 1))
+
+# Tahminleri tarihlerle eşle
+last_date = df.index[-1]
+future_dates = pd.date_range(last_date + pd.Timedelta(days=1), periods=future_steps)
+
+# Sonuçları DataFrame olarak göster
+forecast_df = pd.DataFrame({'tarih': future_dates, 'tahmin': predicted_values.flatten()})
+print(forecast_df)
+
+
+# Görselleştirme
+plt.figure(figsize=(10,5))
+plt.plot(df.index[-50:], df['geri_donus_sayisi'].values[-50:], label='Gerçek Değerler')
+plt.plot(forecast_df['tarih'], forecast_df['tahmin'], label='RNN Tahminleri', linestyle='--', marker='o')
+plt.legend()
+plt.title('RNN ile Geri Dönüş Tahmini')
+plt.xlabel('Tarih')
+plt.ylabel('Geri Dönüş Sayısı')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
