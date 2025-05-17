@@ -67,6 +67,12 @@ data_values = df['geri_donus_sayisi'].values.reshape(-1, 1)
 scaler = MinMaxScaler()
 scaled_data = scaler.fit_transform(data_values)
 
+
+# Hedef veri sütununu al ve normalleştir
+data_values = df['geri_donus_sayisi'].values.reshape(-1, 1)
+scaler = MinMaxScaler()
+scaled_data = scaler.fit_transform(data_values)
+
 # Lookback (kaç gün geçmişi kullanacağımız)
 look_back = 10
 
@@ -100,7 +106,7 @@ early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=
 history = model.fit(
     X_train, y_train,
     # epochs=50,
-    epochs=100, #earlystopping için eklendi
+    epochs=50, #earlystopping için eklendi
     batch_size=16,
     validation_data=(X_val, y_val),
     callbacks=[early_stop],
@@ -143,9 +149,6 @@ print(forecast_df)
 #plt.xticks(rotation=45)
 #plt.tight_layout()
 #plt.show()
-
-
-
 
 plt.figure(figsize=(8, 4))
 plt.plot(history.history['loss'], label='Eğitim Kaybı')
