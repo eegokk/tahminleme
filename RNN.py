@@ -6,6 +6,8 @@ from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import SimpleRNN, Dense
 from sklearn.model_selection import train_test_split
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import SimpleRNN, Dense, Dropout
 
 
 # Bağlantı bilgileri
@@ -60,15 +62,13 @@ df = df.sort_index()
 # Sadece hedef kolonu al
 data_values = df['geri_donus_sayisi'].values.reshape(-1, 1)
 
-# Eğitim ve doğrulama verilerini %80-%20 oranında ayır
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=False)
 
 # Veriyi ölçekle (0-1 arası)
 scaler = MinMaxScaler()
 scaled_data = scaler.fit_transform(data_values)
 
 # Lookback (kaç gün geçmişi kullanacağımız)
-look_back = 90
+look_back = 10
 
 def create_sequences(data, look_back):
     X, y = [], []
@@ -83,14 +83,29 @@ X, y = create_sequences(scaled_data, look_back)
 X = X.reshape((X.shape[0], X.shape[1], 1))
 
 
-# RNN modeli oluşturma
+# Eğitim ve doğrulama verilerini %80-%20 oranında ayır
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=False)
+
+# Modeli eğit
+#history = model.fit(X, y, epochs=50, batch_size=16, verbose=1)
+
 model = Sequential()
 model.add(SimpleRNN(50, activation='tanh', input_shape=(look_back, 1)))
+model.add(Dropout(0.2))  # %20 oranında dropout için eklendi
 model.add(Dense(1))
 model.compile(optimizer='adam', loss='mse')
 
-# Modeli eğit
-history = model.fit(X, y, epochs=50, batch_size=16, verbose=1)
+early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)  #earlystopping için eklendi
+
+history = model.fit(
+    X_train, y_train,
+    # epochs=50,
+    epochs=100, #earlystopping için eklendi
+    batch_size=16,
+    validation_data=(X_val, y_val),
+    callbacks=[early_stop],
+    verbose=1
+)
 
 
 # Gelecek günler için tahmin 
@@ -118,14 +133,27 @@ print(forecast_df)
 
 
 # Görselleştirme
-plt.figure(figsize=(10,5))
-plt.plot(df.index[-50:], df['geri_donus_sayisi'].values[-50:], label='Gerçek Değerler')
-plt.plot(forecast_df['tarih'], forecast_df['tahmin'], label='RNN Tahminleri', linestyle='--', marker='o')
+#plt.figure(figsize=(10,5))
+#plt.plot(df.index[-50:], df['geri_donus_sayisi'].values[-50:], label='Gerçek Değerler')
+#plt.plot(forecast_df['tarih'], forecast_df['tahmin'], label='RNN Tahminleri', linestyle='--', marker='o')
+#plt.legend()
+#plt.title('RNN ile Geri Dönüş Tahmini')
+#plt.xlabel('Tarih')
+#plt.ylabel('Geri Dönüş Sayısı')
+#plt.xticks(rotation=45)
+#plt.tight_layout()
+#plt.show()
+
+
+
+
+plt.figure(figsize=(8, 4))
+plt.plot(history.history['loss'], label='Eğitim Kaybı')
+plt.plot(history.history['val_loss'], label='Doğrulama Kaybı')
+plt.title('Model Loss (Eğitim vs Doğrulama)')
+plt.xlabel('Epoch')
+plt.ylabel('MSE')
 plt.legend()
-plt.title('RNN ile Geri Dönüş Tahmini')
-plt.xlabel('Tarih')
-plt.ylabel('Geri Dönüş Sayısı')
-plt.xticks(rotation=45)
+plt.grid(True)
 plt.tight_layout()
 plt.show()
-
