@@ -69,6 +69,7 @@ df.rename(columns={'SAYI': 'geri_donus_sayisi'}, inplace=True)
 df = df.sort_index()
 #df = df.asfreq('D') eksik verim olmadığından bu alanlar çıkarıldı
 #df.ffill(inplace=True)
+
     
 
 # veri hazırlama
@@ -82,14 +83,13 @@ data_values = df['geri_donus_sayisi'].values.reshape(-1, 1) #gerçek değer tahm
 scaled_data = scaler.fit_transform(data_values)
 
 
-
 # Hedef veri sütununu al ve normalleştir
 data_values = df['geri_donus_sayisi'].values.reshape(-1, 1)
 scaler = MinMaxScaler()
 scaled_data = scaler.fit_transform(data_values)
 
 # Lookback (kaç gün geçmişi kullanacağımız)
-look_back = 10
+look_back = 15
 
 def create_sequences(data, look_back):
     X, y = [], []
@@ -113,6 +113,7 @@ X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=F
 
 # Modeli eğit
 #history = model.fit(X, y, epochs=50, batch_size=16, verbose=1)
+
 
 model = Sequential()
 model.add(SimpleRNN(50, activation='tanh', input_shape=(look_back, 1)))
@@ -168,7 +169,6 @@ forecast_df = pd.DataFrame({
     'tahmin': future_pred.flatten()
 })
 forecast_df['gercek'] = df['geri_donus_sayisi'].reindex(forecast_df['tarih']).values  # güvenli eşleşme    
-    
     
 
 # Tahminleri ölçekten çıkartıp orijinal ölçeğe geri dönüoruz.
@@ -238,13 +238,15 @@ print(f"Geçmiş için RMSE: {rmse:.2f}")
 print("Eşleşmeyen tarih(ler):")
 print(forecast_df[forecast_df['gercek'].isna()][['tarih']])
 
+
+# MAPE hesaplaması
 print("Ortalama gerçek değer:", df['geri_donus_sayisi'].mean())
 print("Standart sapma:", df['geri_donus_sayisi'].std())
 mape = np.mean(np.abs((past_df['gercek'] - past_df['tahmin']) / past_df['gercek'])) * 100
 print(f"MAPE: {mape:.2f}%")
 
 
-
+# SMAPE Hesaplaması
 def smape(y_true, y_pred):
     denominator = (np.abs(y_true) + np.abs(y_pred)) / 2
     diff = np.abs(y_true - y_pred) / denominator
@@ -255,12 +257,10 @@ smape_score = smape(past_df['gercek'].values, past_df['tahmin'].values)
 print(f"SMAPE: {smape_score:.2f}%")
 
 
-# Naive tahmin: bir önceki değeri tahmin et
+# MASE Hesaplaması
 naive_forecast = past_df['gercek'].shift(1).dropna()
 actual_values = past_df['gercek'][1:]  # aynı uzunlukta
-
 mae_naive = mean_absolute_error(actual_values, naive_forecast)
 mae_model = mean_absolute_error(past_df['gercek'], past_df['tahmin'])
-
 mase_score = mae_model / mae_naive
 print(f"MASE: {mase_score:.2f}")
