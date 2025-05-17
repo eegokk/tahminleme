@@ -8,6 +8,16 @@ from tensorflow.keras.layers import SimpleRNN, Dense
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import SimpleRNN, Dense, Dropout
+import os   #random seed sabitleme için eklendi
+import random  #random seed sabitleme için eklendi
+import numpy as np  #random seed sabitleme için eklendi
+import tensorflow as tf  #random seed sabitleme için eklendi
+
+# Tekrarlanabilirlik için sabit tohum değerleri
+os.environ['PYTHONHASHSEED'] = '0'  #random seed sabitleme için eklendi
+np.random.seed(42)  #random seed sabitleme için eklendi
+random.seed(42) #random seed sabitleme için eklendi
+tf.random.set_seed(42) #random seed sabitleme için eklendi
 
 
 # Bağlantı bilgileri
@@ -74,7 +84,7 @@ scaler = MinMaxScaler()
 scaled_data = scaler.fit_transform(data_values)
 
 # Lookback (kaç gün geçmişi kullanacağımız)
-look_back = 20
+look_back = 10
 
 def create_sequences(data, look_back):
     X, y = [], []
@@ -138,11 +148,13 @@ forecast_df = pd.DataFrame({'tarih': future_dates, 'tahmin': predicted_values.fl
 print(forecast_df)
 
 
+
 # Görselleştirme
 plt.figure(figsize=(10,5))
 plt.plot(df.index[-50:], df['geri_donus_sayisi'].values[-50:], label='Gerçek Değerler')
 plt.plot(forecast_df['tarih'], forecast_df['tahmin'], label='RNN Tahminleri', linestyle='--', marker='o')
 plt.legend()
+plt.grid(True)
 plt.title('RNN ile Geri Dönüş Tahmini')
 plt.xlabel('Tarih')
 plt.ylabel('Geri Dönüş Sayısı')
@@ -151,13 +163,15 @@ plt.tight_layout()
 plt.show()
 
 #Overfitting için Görselleştirme
-#plt.figure(figsize=(8, 4))
-#plt.plot(history.history['loss'], label='Eğitim Kaybı')
-#plt.plot(history.history['val_loss'], label='Doğrulama Kaybı')
-#plt.title('Model Loss (Eğitim vs Doğrulama)')
-#plt.xlabel('Epoch')
-#plt.ylabel('MSE')
-#plt.legend()
-#plt.grid(True)
-#plt.tight_layout()
-#plt.show()
+plt.figure(figsize=(8, 4))
+plt.plot(history.history['loss'], label='Eğitim Kaybı')
+plt.plot(history.history['val_loss'], label='Doğrulama Kaybı')
+plt.title('Model Loss (Eğitim vs Doğrulama)')
+plt.xlabel('Epoch')
+plt.ylabel('MSE')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+
