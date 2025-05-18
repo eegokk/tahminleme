@@ -7,6 +7,18 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 
+import os
+import random
+import tensorflow as tf
+
+# Rastgelelikleri sabitle
+os.environ['TF_DETERMINISTIC_OPS'] = '1'
+#os.environ['PYTHONHASHSEED'] = '42'
+random.seed(42)
+np.random.seed(42)
+tf.random.set_seed(42)
+
+
 # 1. Oracle veritabanına bağlan
 username = 'ECINAR'
 password = '123'
