@@ -50,11 +50,8 @@ df['tarih'] = pd.to_datetime(df['TARIH'])
 df.set_index('TARIH', inplace=True)
 df.rename(columns={'SAYI': 'geri_donus_sayisi'}, inplace=True)
 df = df.sort_index()
+df["weekday"] = df.index.weekday
 
-# 2. TARİH DÜZENLEME
-#df['TARIH'] = pd.to_datetime(df['TARIH'])
-#df = df.sort_values('TARIH')
-#df.set_index('TARIH', inplace=True)
 
 # 3. VERİYİ ÖLÇEKLE
 scaler = MinMaxScaler()
@@ -83,10 +80,67 @@ model.fit(X, y, epochs=50, batch_size=1, verbose=1)
 predicted = model.predict(X)
 predicted = scaler.inverse_transform(predicted)
 
-# 8. GRAFİKLE GÖSTER
+# Gelecek tahminleri
+future_steps = 30  # Kaç gün sonrasını tahmin etmek istiyorsan burada belirle
+last_sequence = scaled_data[-window_size:]  # Son pencere verisi
+future_predictions = []
+
+current_sequence = last_sequence.copy()
+
+for _ in range(future_steps):
+    prediction = model.predict(current_sequence.reshape(1, window_size, 1))
+    future_predictions.append(prediction[0, 0])
+    
+    # Yeni tahmini diziye ekle, eskisini çıkar (kayan pencere)
+    current_sequence = np.append(current_sequence[1:], prediction, axis=0)
+
+# Ölçekten çıkar (inverse transform)
+future_predictions = scaler.inverse_transform(np.array(future_predictions).reshape(-1, 1))
+
+# Gelecek tarihleri oluştur
+last_date = df.index[-1]
+future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
+
+# 8. Gelecek tahmini eklenmiş Grafik Gösterimi
 plt.figure(figsize=(10,6))
 plt.plot(df.index[window_size:], df['geri_donus_sayisi'][window_size:], label='Gerçek')
 plt.plot(df.index[window_size:], predicted, label='Tahmin')
+plt.plot(future_dates, future_predictions, label='İleri Tahmin', linestyle='dashed')
 plt.legend()
-plt.title("Gerçek vs LSTM Tahmin")
+plt.title("Gerçek vs LSTM Tahmin ve Gelecek Tahminleri")
 plt.show()
+
+# Gerçek Değeri Tahminleyen Grafik
+#plt.figure(figsize=(10,6))
+#plt.plot(df.index[window_size:], df['geri_donus_sayisi'][window_size:], label='Gerçek')
+#plt.plot(df.index[window_size:], predicted, label='Tahmin')
+#plt.legend()
+#plt.title("Gerçek vs LSTM Tahmin")
+#plt.show()
+
+
+#Değerleri hesaplamak için eklendi.
+from sklearn.metrics import mean_absolute_error, mean_squared_error
+import numpy as np
+
+# Gerçek ve tahmin değerlerini hizala (window_size sonrası)
+y_true = df['geri_donus_sayisi'][window_size:].values
+y_pred = predicted.flatten()
+
+# MAE
+mae = mean_absolute_error(y_true, y_pred)
+
+# RMSE
+rmse = np.sqrt(mean_squared_error(y_true, y_pred))
+
+# MAPE
+mape = np.mean(np.abs((y_true - y_pred) / y_true)) * 100
+
+# SMAPE (kendi formülümüzle)
+smape = 100 * np.mean(2 * np.abs(y_pred - y_true) / (np.abs(y_pred) + np.abs(y_true)))
+
+# Yazdır
+print(f"MAE: {mae:.2f}")
+print(f"RMSE: {rmse:.2f}")
+print(f"MAPE: {mape:.2f}%")
+print(f"SMAPE: {smape:.2f}%")
