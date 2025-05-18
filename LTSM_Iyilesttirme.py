@@ -5,10 +5,13 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
-
 import os
 import random
 import tensorflow as tf
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import Dropout
+
+
 
 # Rastgelelikleri sabitle
 os.environ['TF_DETERMINISTIC_OPS'] = '1'
@@ -108,17 +111,49 @@ X = np.array(X)
 y = np.array(y)
 
 
+
 # 5. MODELİ KUR
 model = Sequential()
 #model.add(LSTM(50, return_sequences=False, input_shape=(X.shape[1], 1)))  #Değerleri idealize etmek için değiştirildi.
 model.add(LSTM(64, return_sequences=True, input_shape=(X.shape[1], X.shape[2])))
+model.add(Dropout(0.2))  # %20 oranında dropout için kapatıldı
 model.add(LSTM(32)) #Değerleri idealize etmek için eklendi.
+model.add(Dropout(0.2))   #dropout için eklendi
 model.add(Dense(1))
-model.compile(optimizer='adam', loss='mse')
-model.summary()
+model.compile(optimizer='adam', loss='mse') 
+model.summary()  
 
+
+
+
+
+#EarlyStopping
+early_stop = EarlyStopping(
+    monitor='val_loss',        # neyi izleyeceğiz
+    patience=5,                # 5 epoch boyunca iyileşme olmazsa dur
+    restore_best_weights=True # en iyi sonucu geri yükle
+)
 # 6. MODELİ EĞİT
-model.fit(X, y, epochs=50, batch_size=1, verbose=1)
+#model.fit(X, y, epochs=50, batch_size=1, verbose=1)
+history = model.fit(X, y,  #history olarak eşitlendi (loss/val_loss grafiği için 
+          epochs=100,
+          batch_size=1,
+          validation_split=0.2,
+          callbacks=[early_stop],
+          verbose=1)  # validation_split vecallbacks parametreleri eklendi
+#epochs 100 yapıldı çünkü zaten earlystoppingte gerektiğinde duracak
+
+# loss/val_loss Grafiği
+plt.figure(figsize=(10,5))
+plt.plot(history.history['loss'], label='Eğitim Kaybı')
+plt.plot(history.history['val_loss'], label='Doğrulama Kaybı')
+plt.xlabel('Epoch')
+plt.ylabel('MSE Kayıp')
+plt.title('Eğitim vs Doğrulama Kaybı')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
 
 
 # 7. TAHMİN YAP
