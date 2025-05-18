@@ -8,9 +8,7 @@ from tensorflow.keras.layers import LSTM, Dense
 import os
 import random
 import tensorflow as tf
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.layers import Dropout
-
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 
 # Rastgelelikleri sabitle
@@ -93,9 +91,8 @@ y_scaled = target_scaler.fit_transform(y_raw)
 
 # 4. SEQUENCE OLUŞTUR
 
-window_size = 5  # ikinci kodla aynı pencere
+window_size = 17
 X, y = [], []
-
 for i in range(len(y_scaled) - window_size):
 #for i in range(len(scaled_data) - window_size): #Değerleri idealize etmek için değiştirildi.
    # X.append(scaled_data[i:i+window_size]) #Değerleri idealize etmek için değiştirildi.
@@ -111,49 +108,26 @@ X = np.array(X)
 y = np.array(y)
 
 
-
 # 5. MODELİ KUR
 model = Sequential()
 #model.add(LSTM(50, return_sequences=False, input_shape=(X.shape[1], 1)))  #Değerleri idealize etmek için değiştirildi.
 model.add(LSTM(64, return_sequences=True, input_shape=(X.shape[1], X.shape[2])))
-model.add(Dropout(0.2))  # %20 oranında dropout için kapatıldı
 model.add(LSTM(32)) #Değerleri idealize etmek için eklendi.
-model.add(Dropout(0.2))   #dropout için eklendi
 model.add(Dense(1))
-model.compile(optimizer='adam', loss='mse') 
-model.summary()  
+model.compile(optimizer='adam', loss='mse')
+model.summary()
 
 
 
-
-
-#EarlyStopping
-early_stop = EarlyStopping(
-    monitor='val_loss',        # neyi izleyeceğiz
-    patience=5,                # 5 epoch boyunca iyileşme olmazsa dur
-    restore_best_weights=True # en iyi sonucu geri yükle
-)
 # 6. MODELİ EĞİT
 #model.fit(X, y, epochs=50, batch_size=1, verbose=1)
-history = model.fit(X, y,  #history olarak eşitlendi (loss/val_loss grafiği için 
-          epochs=100,
-          batch_size=1,
-          validation_split=0.2,
-          callbacks=[early_stop],
-          verbose=1)  # validation_split vecallbacks parametreleri eklendi
-#epochs 100 yapıldı çünkü zaten earlystoppingte gerektiğinde duracak
-
-# loss/val_loss Grafiği
-plt.figure(figsize=(10,5))
-plt.plot(history.history['loss'], label='Eğitim Kaybı')
-plt.plot(history.history['val_loss'], label='Doğrulama Kaybı')
-plt.xlabel('Epoch')
-plt.ylabel('MSE Kayıp')
-plt.title('Eğitim vs Doğrulama Kaybı')
-plt.legend()
-plt.grid(True)
-plt.tight_layout()
-plt.show()
+history = model.fit(
+    X, y,
+    epochs=50,
+    batch_size=1,
+    validation_split=0.1,
+    verbose=1
+)
 
 
 # 7. TAHMİN YAP
@@ -174,8 +148,7 @@ current_sequence = last_sequence.copy()
 
 for _ in range(future_steps):
     prediction = model.predict(current_sequence.reshape(1, window_size, 4)) 
-    future_predictions.append(prediction[0, 0])
-    
+    future_predictions.append(prediction[0, 0])    
     dummy_features = np.zeros((1, 3))  # ay, gün, hafta sonu sahte veri
     new_step = np.concatenate((prediction, dummy_features), axis=1)
     current_sequence = np.append(current_sequence[1:], new_step, axis=0)
@@ -207,10 +180,6 @@ plt.show()
 #plt.show()
 
 
-#Değerleri hesaplamak için eklendi.
-from sklearn.metrics import mean_absolute_error, mean_squared_error
-import numpy as np
-
 # Gerçek ve tahmin değerlerini hizala (window_size sonrası)
 y_true = df['geri_donus_sayisi'][window_size:].values
 y_pred = y_pred_inverse.flatten() 
@@ -231,7 +200,58 @@ mape = np.mean(np.abs((y_true_inverse - y_pred_inverse) / y_true_inverse)) * 100
 #smape = 100 * np.mean(2 * np.abs(y_pred - y_true) / (np.abs(y_pred) + np.abs(y_true))) # Değerleri idealize etmek için değiştirildi.
 smape = 100 * np.mean(2 * np.abs(y_pred_inverse - y_true_inverse) / (np.abs(y_pred_inverse) + np.abs(y_true_inverse))) 
 
+# MASE hesapla
+naive_forecast = y_true[1:]  # Gerçek değerler (bir gün sonrası)
+naive_prediction = y_true[:-1]  # Naive model: her değeri bir önceki günün değeri olarak tahmin eder
+
+naive_mae = mean_absolute_error(naive_forecast, naive_prediction)
+mase = mae / naive_mae
+
+
 print(f"MAE: {mae:.2f}")
 print(f"RMSE: {rmse:.2f}")
 print(f"MAPE: {mape:.2f}%")
-print(f"SMAPE: {smape:.2f}%")                                                                   
+print(f"SMAPE: {smape:.2f}%")  
+print(f"MASE: {mase:.2f}")                                                                 
+
+
+
+# Hata hesapla
+hatalar_df = pd.DataFrame({
+    'gercek': y_true,
+    'tahmin': y_pred,
+}, index=df.index[window_size:])
+
+hatalar_df['hata'] = hatalar_df['gercek'] - hatalar_df['tahmin']
+hatalar_df['mutlak_hata'] = np.abs(hatalar_df['hata'])
+                                                         
+plt.figure(figsize=(12,5))
+plt.plot(hatalar_df.index, hatalar_df['hata'], label='Hata (Gerçek - Tahmin)')
+plt.axhline(0, color='gray', linestyle='--')
+plt.title('Günlük Tahmin Hataları')
+plt.ylabel('Hata')
+plt.xlabel('Tarih')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+
+aylik_hatalar = hatalar_df.resample('M').mean()
+
+plt.figure(figsize=(10,4))
+plt.bar(aylik_hatalar.index, aylik_hatalar['mutlak_hata'], width=20)
+plt.title('Aylık Ortalama Mutlak Hata')
+plt.ylabel('Ortalama Hata')
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.show()
+
+
+en_kotu = hatalar_df.sort_values(by='mutlak_hata', ascending=False).head(10)
+print("En yüksek sapmalı 10 gün:")
+print(en_kotu)
+
+
+hatalar_df['weekday'] = hatalar_df.index.dayofweek
+print(hatalar_df.groupby('weekday')['mutlak_hata'].mean())
