@@ -295,3 +295,8 @@ print(f"MAPE: {mape:.2f}%")
 print(f"SMAPE: {smape:.2f}%")
 print(f"MASE: {mase:.2f}")
 
+
+results_df = pd.DataFrame(results)
+results_df = results_df.sort_values(by='MAE')
+print("\n🔍 En iyi sonuçlar:")
+print(results_df.head())
