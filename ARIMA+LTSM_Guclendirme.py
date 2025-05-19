@@ -2,7 +2,6 @@ import cx_Oracle
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
 from statsmodels.tsa.arima.model import ARIMA
 #from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
@@ -183,4 +182,5 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
 
