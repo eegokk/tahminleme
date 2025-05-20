@@ -8,16 +8,16 @@ from sklearn.metrics import r2_score
 
 
 # Bağlantı bilgileri
-username = 'ECINAR'  # Veritabanı kullanıcı adınız
-password = '123'  # Veritabanı şifreniz
-dsn = '127.0.0.1:1521/orcl'  # Veritabanı bağlantı adresi (localhost, port ve service name)
+username = 'ECINAR' 
+password = '123' 
+dsn = '127.0.0.1:1521/orcl'  
 
 try:
     # Oracle veritabanına bağlantı
     connection = cx_Oracle.connect(username, password, dsn)
     print("Bağlantı başarılı ✅")
 
-    # Bağlantıyı kontrol etmek için bir sorgu çalıştıralım
+    # Bağlantıyı kontrol etmek için çalıştırılan sorgu
     cursor = connection.cursor()
     query = "SELECT * FROM ECINAR.YK_GGD_SAYI "
     cursor.execute(query)
@@ -94,13 +94,6 @@ for trend in ['add', 'mul']:
         except Exception as e:
             print(f"{trend}-{seasonal} model başarısız: {e}")
 
-
-
-#Tahmin Değerlendirme
-#mse = mean_squared_error(test["geri_donus_sayisi"], forecast)
-#mae = mean_absolute_error(test["geri_donus_sayisi"], forecast)
-#print("MSE:", mse)
-#print("MAE:", mae)
 
 forecast = best_model[3]  # en iyi modelin tahmin sonuçları
 
