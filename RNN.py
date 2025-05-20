@@ -21,16 +21,16 @@ tf.random.set_seed(42) #random seed sabitleme için eklendi
 
 
 # Bağlantı bilgileri
-username = 'ECINAR'  # Veritabanı kullanıcı adınız
-password = '123'  # Veritabanı şifreniz
-dsn = '127.0.0.1:1521/orcl'  # Veritabanı bağlantı adresi (localhost, port ve service name)
+username = 'ECINAR' 
+password = '123'  
+dsn = '127.0.0.1:1521/orcl'  
 
 try:
     # Oracle veritabanına bağlantı
     connection = cx_Oracle.connect(username, password, dsn)
     print("Bağlantı başarılı ✅")
 
-    # Bağlantıyı kontrol etmek için bir sorgu çalıştıralım
+    # Bağlantıyı kontrol etmek için çalıştırılan sorgu
     cursor = connection.cursor()
     query = "SELECT * FROM ECINAR.YK_GGD_SAYI "
     cursor.execute(query)
@@ -48,7 +48,7 @@ try:
     #print("Veriler DataFrame olarak alındı:")
     #print(df)
     #print(df.head())  # İlk 5 satır
-    print(df.columns)         # Sütun isimlerini göster
+    print(df.columns)        
     print(df.iloc[:, :2])  
 
     # Bağlantıyı kapat
@@ -69,7 +69,8 @@ df = df.sort_index()
     
 
 # veri hazırlama
-# Sadece hedef kolonu al
+# NumPy dizisini 2 boyutlu hale getirir. -1 değeri satır sayısını otomatik ayarlar.
+# 1 değeri her satırda yalnızca bir değer olur.
 data_values = df['geri_donus_sayisi'].values.reshape(-1, 1)
 
 
@@ -77,11 +78,6 @@ data_values = df['geri_donus_sayisi'].values.reshape(-1, 1)
 scaler = MinMaxScaler()
 scaled_data = scaler.fit_transform(data_values)
 
-
-# Hedef veri sütununu al ve normalleştir
-data_values = df['geri_donus_sayisi'].values.reshape(-1, 1)
-scaler = MinMaxScaler()
-scaled_data = scaler.fit_transform(data_values)
 
 # Lookback (kaç gün geçmişi kullanacağımız)
 look_back = 10
@@ -105,6 +101,7 @@ X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=F
 # Modeli eğit
 #history = model.fit(X, y, epochs=50, batch_size=16, verbose=1)
 
+#overfitting için eklendi
 model = Sequential()
 model.add(SimpleRNN(50, activation='tanh', input_shape=(look_back, 1)))
 model.add(Dropout(0.2))  # %20 oranında dropout için eklendi
@@ -113,6 +110,7 @@ model.compile(optimizer='adam', loss='mse')
 
 early_stop = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)  #earlystopping için eklendi
 
+#overfitting
 history = model.fit(
     X_train, y_train,
     # epochs=50,
