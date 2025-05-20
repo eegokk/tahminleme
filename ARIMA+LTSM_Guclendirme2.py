@@ -182,7 +182,7 @@ def create_sequences(data, look_back=30):
         y.append(data[i+look_back])
     return np.array(X), np.array(y)
 
-# %%
+# 
 look_back = 5
 X, y = create_sequences(res_scaled, look_back)
 X = X.reshape((X.shape[0], X.shape[1], 1))
