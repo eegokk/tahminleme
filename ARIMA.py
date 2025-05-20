@@ -5,7 +5,6 @@ This is a temporary script file.
 """
 import cx_Oracle
 import pandas as pd
-import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
 
@@ -108,4 +107,5 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
+
 
