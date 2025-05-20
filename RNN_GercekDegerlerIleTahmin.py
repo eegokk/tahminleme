@@ -10,11 +10,10 @@ from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import SimpleRNN, Dense, Dropout
 import os   #random seed sabitleme için eklendi
 import random  #random seed sabitleme için eklendi
-import numpy as np  #random seed sabitleme için eklendi
 import tensorflow as tf  #random seed sabitleme için eklendi
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
-from tensorflow.keras.callbacks import EarlyStopping
+
 
 # Tekrarlanabilirlik için sabit tohum değerleri
 os.environ['PYTHONHASHSEED'] = '0'  #random seed sabitleme için eklendi
@@ -67,8 +66,7 @@ df['tarih'] = pd.to_datetime(df['TARIH'])
 df.set_index('TARIH', inplace=True)
 df.rename(columns={'SAYI': 'geri_donus_sayisi'}, inplace=True)
 df = df.sort_index()
-#df = df.asfreq('D') eksik verim olmadığından bu alanlar çıkarıldı
-#df.ffill(inplace=True)
+
 
     
 
