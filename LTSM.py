@@ -7,16 +7,16 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
 
 # Bağlantı bilgileri
-username = 'ECINAR'  # Veritabanı kullanıcı adınız
-password = '123'  # Veritabanı şifreniz
-dsn = '127.0.0.1:1521/orcl'  # Veritabanı bağlantı adresi (localhost, port ve service name)
+username = 'ECINAR' 
+password = '123' 
+dsn = '127.0.0.1:1521/orcl'  
 
 try:
     # Oracle veritabanına bağlantı
     connection = cx_Oracle.connect(username, password, dsn)
     print("Bağlantı başarılı ✅")
 
-    # Bağlantıyı kontrol etmek için bir sorgu çalıştıralım
+    # Bağlantıyı kontrol etmek için çalıştırılan sorggu
     cursor = connection.cursor()
     query = "SELECT * FROM ECINAR.YK_GGD_SAYI "
     cursor.execute(query)
@@ -101,6 +101,14 @@ future_predictions = scaler.inverse_transform(np.array(future_predictions).resha
 last_date = df.index[-1]
 future_dates = pd.date_range(start=last_date + pd.Timedelta(days=1), periods=future_steps)
 
+# Gerçek Değeri Tahminleyen Grafik
+plt.figure(figsize=(10,6))
+plt.plot(df.index[window_size:], df['geri_donus_sayisi'][window_size:], label='Gerçek')
+plt.plot(df.index[window_size:], predicted, label='Tahmin')
+plt.legend()
+plt.title("Gerçek vs LSTM Tahmin")
+plt.show()
+
 # 8. Gelecek tahmini eklenmiş Grafik Gösterimi
 plt.figure(figsize=(10,6))
 plt.plot(df.index[window_size:], df['geri_donus_sayisi'][window_size:], label='Gerçek')
@@ -110,13 +118,7 @@ plt.legend()
 plt.title("Gerçek vs LSTM Tahmin ve Gelecek Tahminleri")
 plt.show()
 
-# Gerçek Değeri Tahminleyen Grafik
-#plt.figure(figsize=(10,6))
-#plt.plot(df.index[window_size:], df['geri_donus_sayisi'][window_size:], label='Gerçek')
-#plt.plot(df.index[window_size:], predicted, label='Tahmin')
-#plt.legend()
-#plt.title("Gerçek vs LSTM Tahmin")
-#plt.show()
+
 
 
 #Değerleri hesaplamak için eklendi.
