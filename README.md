@@ -1,2 +1,0 @@
-# tahminleme
-tahminleme
