@@ -206,6 +206,8 @@ forecast_df = pd.DataFrame({
 print("\n📅 Gelecek 10 Günlük Tahmin:")
 print(forecast_df.to_string(index=False))
 
+
++
 # 📊 Performans metriklerini hesapla
 mae = mean_absolute_error(true_values, hybrid_in_sample)
 rmse = np.sqrt(mean_squared_error(true_values, hybrid_in_sample))
