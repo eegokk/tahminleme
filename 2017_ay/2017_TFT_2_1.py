@@ -76,7 +76,7 @@ val_loader = validation.to_dataloader(train=False, batch_size=16, num_workers=0)
 # TFT MODELİNİ OLUŞTUR
 tft = TemporalFusionTransformer.from_dataset(
     training,
-    learning_rate=0.03,
+    learning_rate= 0.04,    #0.03,
     hidden_size=16,
     attention_head_size=1,
     dropout=0.1,
