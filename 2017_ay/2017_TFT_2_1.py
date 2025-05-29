@@ -70,8 +70,8 @@ training = TimeSeriesDataSet(
     allow_missing_timesteps=True)
 
 validation = TimeSeriesDataSet.from_dataset(training, df, predict=True, stop_randomization=True)
-train_loader = training.to_dataloader(train=True, batch_size=16, num_workers=0)
-val_loader = validation.to_dataloader(train=False, batch_size=16, num_workers=0)
+train_loader = training.to_dataloader(train=True, batch_size=32, num_workers=0)
+val_loader = validation.to_dataloader(train=False, batch_size=32, num_workers=0)
 
 # TFT MODELİNİ OLUŞTUR
 tft = TemporalFusionTransformer.from_dataset(
