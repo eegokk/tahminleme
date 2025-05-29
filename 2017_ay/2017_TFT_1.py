@@ -34,6 +34,7 @@ except cx_Oracle.DatabaseError as e:
 
 # VERİ HAZIRLAMA
 df.columns = [col.upper() for col in df.columns]
+print("✅ Sütun adları:", df.columns.tolist())
 df["TARIH"] = pd.to_datetime(df["TARIH"])
 df = df.sort_values("TARIH")
 df["time_idx"] = (df["TARIH"] - df["TARIH"].min()).dt.days // 30  # Aylık indeks
@@ -42,7 +43,7 @@ df["AY"] = 0  # Tek grup için sabit ID
 
 # TFT MODEL VERİ SETİ
 max_encoder_length = 24
-max_prediction_length = 6
+max_prediction_length = 10
 training_cutoff = df["time_idx"].max() - max_prediction_length
 
 training = TimeSeriesDataSet(
@@ -85,14 +86,13 @@ trainer = pl.Trainer(
 
 # Eğitimi başlat
 trainer.fit(
-    model=tft,  # tft bir TemporalFusionTransformer örneği
+    model=tft,  
     train_dataloaders=train_loader,
     val_dataloaders=val_loader)
 
-
-
 # TAHMİN VE GRAFİK
 predictions, x = tft.predict(val_loader, mode="prediction", return_x=True)
+
 
 # Gerçek ve tahmin edilen değerleri çıkar (ilk örnek için idx=0)
 predicted = predictions[0].detach().cpu().numpy().squeeze()
@@ -107,10 +107,39 @@ dates = [time_map.get(i) for i in decoder_time_idx]
 print("Tahmin shape:", predicted.shape)
 print("Tarih sayısı :", len(dates))
 
+
+
+# Geleceğe ait tahmin tarihlerini oluştur
+last_idx = df["time_idx"].max()
+future_idx = np.arange(last_idx + 1, last_idx + 1 + max_prediction_length)
+
+# Boş veri çerçevesi ile gelecek tarihleri üret
+future_dates = pd.date_range(df["TARIH"].max() + pd.DateOffset(months=1), periods=max_prediction_length, freq="MS")
+future_df = pd.DataFrame({
+    "TARIH": future_dates,
+    "time_idx": future_idx,
+    "AY": 0
+})
+future_df["SAYI"] = np.nan 
+
+# Geleceği tahminleyecek veri setini oluştur
+df_extended = pd.concat([df, future_df], ignore_index=True)
+df_extended["SAYI"] = df_extended["SAYI"].fillna(method="ffill") 
+predict_dataset = TimeSeriesDataSet.from_dataset(training, df_extended, predict=True, stop_randomization=True)
+predict_loader = predict_dataset.to_dataloader(train=False, batch_size=1, num_workers=0)
+
+# Tahmin üret
+predictions_future, x_future = tft.predict(predict_loader, mode="raw", return_x=True)
+
+# Grafik verisini çıkar
+future_pred = predictions_future[0].detach().cpu().numpy().squeeze()
+future_time_idx = x_future["decoder_time_idx"][0].detach().cpu().numpy()
+future_dates = [df_extended[df_extended["time_idx"] == idx]["TARIH"].values[0] for idx in future_time_idx]
+
 # Grafik
 plt.figure(figsize=(12, 6))
-plt.plot(dates, true, label='Gerçek Veri', linewidth=2)
-plt.plot(dates, predicted, label='TFT Tahminleri', linestyle='--', marker='o')
+plt.plot(df["TARIH"], df["SAYI"], label='Gerçek Veri', color='blue', linewidth=2) 
+plt.plot(future_dates, future_pred, label='TFT Gelecek Tahminleri', color='red', linewidth=2)
 plt.title('TFT ile Aylık Gönüllü Geri Dönüş Tahmini')
 plt.xlabel("Tarih")
 plt.ylabel("Geri Dönüş Sayısı")
@@ -119,5 +148,7 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-print("Tahmin edilen değerler:", predicted.astype(int))
-print("Gerçek değerler:", true)
+
+print(" Gerçek Değerler vs Tahmin:\n")
+for tarih,gercek, tahmin in zip(dates, true.astype(int),predicted.astype(int)):
+    print(f"{tarih.strftime('%Y-%m-%d')} -> Gerçek:{gercek:>6},  Tahmin:{tahmin:>6}")
