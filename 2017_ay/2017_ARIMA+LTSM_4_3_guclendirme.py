@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from statsmodels.tsa.arima.model import ARIMA
-#from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense
@@ -12,7 +12,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 import os
 import random
 import tensorflow as tf
-#from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Dropout
+#from tensorflow.keras.callbacks import EarlyStopping
 
 SEED = 42
 os.environ['PYTHONHASHSEED'] = str(SEED)
@@ -79,11 +80,14 @@ X = X.reshape((X.shape[0], X.shape[1], 1))
 model_lstm = Sequential()
 #model_lstm.add(LSTM(50, activation='relu', input_shape=(look_back, 1)))
 model_lstm.add(LSTM(64, return_sequences=True, input_shape=(look_back, 1)))
-#model_lstm.add(Dropout(0.2))
+#model_lstm.add(Dropout(0.1))
 model_lstm.add(LSTM(32))
 model_lstm.add(Dense(1))
 model_lstm.compile(optimizer='adam', loss='mse')
-model_lstm.fit(X, y, epochs=150, verbose=1)
+model_lstm.fit(X, y, epochs=150, verbose=1)  #en iyi sonuç 2500
+#model_lstm.fit(X, y, epochs=2500, verbose=1, callbacks=[early_stopping])
+#model_lstm.fit(X, y, epochs=150, verbose=1,validation_split=0.05)
+
 
 # ARIMA tahmini (gelecek 10 ay)
 future_arima = model_arima_fit.forecast(steps=10)
@@ -142,11 +146,24 @@ print(f"RMSE : {rmse:.2f}")
 print(f"MAPE : {mape:.2f}%")
 print(f"MASE : {mase:.2f}")
 
+print("\nGEÇMİŞ VERİ & TAHMİN KARŞILAŞTIRMASI:")
+comparison_df = pd.DataFrame({
+    'Gerçek': actual_past.values.astype(int),
+    'Tahmin': hybrid_past.astype(int)
+}, index=actual_past.index)
+
+comparison_df['Hata'] = comparison_df['Gerçek'] - comparison_df['Tahmin']
+comparison_df['Mutlak Hata'] = np.abs(comparison_df['Hata'])
+
+# Sadece son 10 ayı göstermek istersen:
+print(comparison_df.tail(15)) 
+# print(comparison_df)   #tüm veri
+
 
 # Grafikle göster
 plt.figure(figsize=(12, 6))
-plt.plot(series, label='Gerçek Veri', linewidth=2)
-plt.plot(actual_past.index, hybrid_past, label='Geçmiş Tahmin (ARIMA+LSTM)', color='orange')  # 
+plt.plot(series, label='Gerçek Veri', linewidth=2.5)
+plt.plot(actual_past.index, hybrid_past, label='Geçmiş Tahmin (ARIMA+LSTM)', color='orange',linestyle='--')   
 plt.plot(forecast_dates, hybrid_forecast, label='Gelecek Tahmin (ARIMA+LSTM)', color='red', linewidth=2)
 plt.title('ARIMA + LSTM Hibrit Tahmin (Geçmiş ve 10 Aylık Gelecek)')
 plt.xlabel("Tarih")
