@@ -70,16 +70,16 @@ training = TimeSeriesDataSet(
     allow_missing_timesteps=True)
 
 validation = TimeSeriesDataSet.from_dataset(training, df, predict=True, stop_randomization=True)
-train_loader = training.to_dataloader(train=True, batch_size=16, num_workers=0)
-val_loader = validation.to_dataloader(train=False, batch_size=16, num_workers=0)
+train_loader = training.to_dataloader(train=True, batch_size=32, num_workers=0)
+val_loader = validation.to_dataloader(train=False, batch_size=32, num_workers=0)
 
 # TFT MODELİNİ OLUŞTUR
 tft = TemporalFusionTransformer.from_dataset(
     training,
     learning_rate= 0.03,    
-    hidden_size=8,
+    hidden_size=16,
     attention_head_size=1,
-    dropout=0.3,
+    dropout=0.2,
     loss=SMAPE(),
     log_interval=1,
     reduce_on_plateau_patience=4)
@@ -88,7 +88,7 @@ tft = TemporalFusionTransformer.from_dataset(
 early_stop = EarlyStopping(monitor="val_loss", patience=10, mode="min")
 lr_logger = LearningRateMonitor()
 trainer = pl.Trainer(
-    max_epochs=75,
+    max_epochs=2,
     gpus=1 if torch.cuda.is_available() else 0,
     gradient_clip_val=0.1,
     callbacks=[early_stop, lr_logger],
